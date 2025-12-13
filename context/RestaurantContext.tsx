@@ -887,6 +887,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       email,
       password: pass,
       options: {
+        emailRedirectTo: window.location.origin, // Dynamically use current domain (Netlify or Localhost)
         data: {
           first_name: meta.first,
           last_name: meta.last
