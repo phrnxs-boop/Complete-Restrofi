@@ -81,7 +81,8 @@ export const Onboarding: React.FC = () => {
 
         } catch (err) {
             console.error("Onboarding failed:", err);
-            alert("Failed to create restaurant. Please try again.");
+            const errorMessage = err instanceof Error ? err.message : "Unknown error";
+            alert(`Failed to create restaurant: ${errorMessage}`);
             setLoading(false);
         }
     };
