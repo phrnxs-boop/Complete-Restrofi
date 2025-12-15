@@ -1,110 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Restrofi | Premium Dining Experience</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lato:wght@300;400;700&family=Cormorant+Garamond:wght@300;400;600&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              gold: {
-                50: '#FBF7E6',
-                100: '#F5ECC6',
-                200: '#EBD995',
-                300: '#E0C564',
-                400: '#D4AF37', // Base Gold
-                500: '#C5A028',
-                600: '#A0801D',
-                700: '#7B6214',
-                800: '#5A470E',
-                900: '#3D3008',
-              },
-              stone: {
-                850: '#23201E', // Deep charcoal
-                950: '#141210',
-              }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restrofi | Premium Dining Experience</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lato:wght@300;400;700&family=Cormorant+Garamond:wght@300;400;600&display=swap"
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold: {
+              50: '#FBF7E6',
+              100: '#F5ECC6',
+              200: '#EBD995',
+              300: '#E0C564',
+              400: '#D4AF37', // Base Gold
+              500: '#C5A028',
+              600: '#A0801D',
+              700: '#7B6214',
+              800: '#5A470E',
+              900: '#3D3008',
             },
-            fontFamily: {
-              serif: ['"Playfair Display"', 'serif'],
-              sans: ['Lato', 'sans-serif'],
-              display: ['"Cormorant Garamond"', 'serif'],
+            stone: {
+              850: '#23201E', // Deep charcoal
+              950: '#141210',
+            }
+          },
+          fontFamily: {
+            serif: ['"Playfair Display"', 'serif'],
+            sans: ['Lato', 'sans-serif'],
+            display: ['"Cormorant Garamond"', 'serif'],
+          },
+          boxShadow: {
+            'premium': '0 20px 40px -15px rgba(0, 0, 0, 0.05)',
+            'premium-hover': '0 30px 60px -12px rgba(212, 175, 55, 0.15)',
+            'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+          },
+          animation: {
+            'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+            'shine': 'shine 1.5s infinite',
+          },
+          keyframes: {
+            fadeInUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
             },
-            boxShadow: {
-              'premium': '0 20px 40px -15px rgba(0, 0, 0, 0.05)',
-              'premium-hover': '0 30px 60px -12px rgba(212, 175, 55, 0.15)',
-              'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
-            },
-            animation: {
-              'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
-              'shine': 'shine 1.5s infinite',
-            },
-            keyframes: {
-              fadeInUp: {
-                '0%': { opacity: '0', transform: 'translateY(20px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              shine: {
-                '0%': { transform: 'translateX(-100%)' },
-                '100%': { transform: 'translateX(100%)' }
-              }
+            shine: {
+              '0%': { transform: 'translateX(-100%)' },
+              '100%': { transform: 'translateX(100%)' }
             }
           }
         }
       }
-    </script>
-    <style>
-      body {
-        font-family: 'Lato', sans-serif;
-        background-color: #FAFAF9; /* stone-50 */
-        color: #1C1917;
-      }
-      h1, h2, h3, h4, h5, h6 {
-        font-family: '"Playfair Display"', serif;
-      }
-      .font-display {
-        font-family: '"Cormorant Garamond"', serif;
-      }
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #EBD995;
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #D4AF37;
-      }
-      .glass-panel {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.39.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Lato', sans-serif;
+      background-color: #FAFAF9;
+      /* stone-50 */
+      color: #1C1917;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-family: '"Playfair Display"', serif;
+    }
+
+    .font-display {
+      font-family: '"Cormorant Garamond"', serif;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #EBD995;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #D4AF37;
+    }
+
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+  </style>
+
+
 </head>
-  <body>
-    <div id="root"></div>
+
+<body>
+  <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

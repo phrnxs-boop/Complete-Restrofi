@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabaseClient";
 import { Restaurant } from "../types/database.types";
 
 export async function getRestaurant(id: string) {
-    return await supabase.from("restaurants").select("*").eq("id", id).single();
+    return await supabase.from("restaurants").select("*").eq("id", id).maybeSingle();
 }
 
 export async function createRestaurant(data: Partial<Restaurant>) {

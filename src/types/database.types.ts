@@ -179,6 +179,32 @@ export interface Database {
                     current_restaurant_id?: string | null
                     created_at?: string
                 }
+            },
+            service_requests: {
+                Row: {
+                    id: string
+                    restaurant_id: string
+                    table_id: string
+                    type: string
+                    status: string
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    restaurant_id: string
+                    table_id: string
+                    type: string
+                    status?: string
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    restaurant_id?: string
+                    table_id?: string
+                    type?: string
+                    status?: string
+                    created_at?: string
+                }
             }
         }
     }

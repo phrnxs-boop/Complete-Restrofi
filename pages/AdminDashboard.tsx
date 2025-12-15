@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { supabase } from '../src/lib/supabaseClient'; // Added for QR table resolution
 import { useRestaurant } from '../context/RestaurantContext';
 import { MenuItem, Order, OrderStatus, ServiceRequest, ServiceType } from '../types';
 import { Icons } from '../components/ui/Icons';
@@ -29,6 +30,44 @@ export const AdminDashboard: React.FC = () => {
 
     const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'qr' | 'analytics' | 'viewmenu'>('orders');
     const [qrTable, setQrTable] = useState('');
+    const [qrTableId, setQrTableId] = useState<string | null>(null);
+
+    // Auto-resolve Table ID for QR Generator
+    React.useEffect(() => {
+        const resolveQRTable = async () => {
+            if (!qrTable || !currentRestaurant) {
+                setQrTableId(null);
+                return;
+            }
+            try {
+                // Try to find existing table
+                const { data, error } = await supabase
+                    .from('tables')
+                    .select('id')
+                    .eq('restaurant_id', currentRestaurant.id)
+                    .ilike('table_number', qrTable)
+                    .maybeSingle();
+
+                if (data) {
+                    setQrTableId(data.id);
+                } else {
+                    // Auto-create if not exists (Admin Feature)
+                    const { data: newTable, error: createError } = await supabase
+                        .from('tables')
+                        .insert({ restaurant_id: currentRestaurant.id, table_number: qrTable })
+                        .select('id')
+                        .single();
+
+                    if (newTable) setQrTableId(newTable.id);
+                }
+            } catch (err) {
+                console.error("Error resolving table for QR:", err);
+            }
+        };
+
+        const timer = setTimeout(resolveQRTable, 500); // 500ms debounce
+        return () => clearTimeout(timer);
+    }, [qrTable, currentRestaurant]);
 
     // Mobile Menu State
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -1048,7 +1087,11 @@ export const AdminDashboard: React.FC = () => {
                                 />
                             </div>
 
-                            {qrTable && (
+                            {qrTable && !qrTableId && (
+                                <div className="text-stone-400 animate-pulse">Generating unique Table ID...</div>
+                            )}
+
+                            {qrTable && qrTableId && (
                                 <div className="flex flex-col items-center animate-fade-in-up">
                                     {/* Visual Preview (what user sees on screen) */}
                                     <div className="p-6 bg-white border-4 border-stone-900 rounded-2xl shadow-2xl mb-6 relative overflow-hidden group w-72 h-auto aspect-[2/3] flex flex-col justify-between">
@@ -1064,7 +1107,7 @@ export const AdminDashboard: React.FC = () => {
 
                                         {/* Same 600x600 URL for caching */}
                                         <img
-                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(`${window.location.origin}/#/ ?rid=${currentRestaurant.id}&table=${qrTable}`)}&color=1c1917`}
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(`${window.location.origin}/#/ ?rid=${currentRestaurant.id}&table=${qrTable}&tableId=${qrTableId}`)}&color=1c1917`}
                                             alt={`QR for Table ${qrTable}`}
                                             className="w-40 h-40 mix-blend-multiply mx-auto my-4"
                                         />
@@ -1075,7 +1118,32 @@ export const AdminDashboard: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
+                                    {/* --- PRINTABLE QR CARD (Only visible when printing) --- */}
+                                    {/* Note: In real usage, you'd iterate through selected tables or just print current */}
+                                    {qrTable && currentRestaurant && qrTableId && (
+                                        <div className="hidden print:flex flex-col items-center justify-center w-full h-full page-break-after-always">
+                                            <div className="border-4 border-stone-900 p-8 rounded-3xl w-[400px] h-[600px] flex flex-col justify-between items-center relative">
+                                                {/* Decorative Corner */}
+                                                <div className="absolute top-0 right-0 w-24 h-24 bg-stone-200 transform translate-x-12 -translate-y-12 rotate-45"></div>
+
+                                                <div className="text-center mt-8 z-10">
+                                                    <h1 className="font-display font-bold text-3xl text-stone-900 uppercase tracking-widest mb-1">{currentRestaurant.name}</h1>
+                                                    <p className="font-serif text-stone-500 italic">Scan to Order</p>
+                                                </div>
+
+                                                <img
+                                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(`${window.location.origin}/#/ ?rid=${currentRestaurant.id}&table=${qrTable}&tableId=${qrTableId}`)}&color=1c1917`}
+                                                    alt={`QR for Table ${qrTable}`}
+                                                    className="w-64 h-64 mix-blend-multiply z-10"
+                                                />
+
+                                                <div className="text-center mb-8 z-10">
+                                                    <p className="text-sm text-stone-400 font-bold uppercase tracking-widest mb-2">Table Number</p>
+                                                    <p className="font-display text-5xl font-bold text-stone-900">Table {qrTable}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}                     <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
                                         <button
                                             onClick={() => window.print()}
                                             className="px-6 py-3 bg-stone-900 text-gold-400 font-bold rounded-xl hover:bg-black transition shadow-lg flex items-center justify-center gap-2 print:hidden"
@@ -1084,7 +1152,7 @@ export const AdminDashboard: React.FC = () => {
                                         </button>
 
                                         <a
-                                            href={`${window.location.origin}/#/ ?rid=${currentRestaurant.id}&table=${qrTable}`}
+                                            href={`${window.location.origin}/#/ ?rid=${currentRestaurant.id}&table=${qrTable}&tableId=${qrTableId}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="px-6 py-3 bg-white text-stone-700 font-bold rounded-xl border border-stone-200 hover:bg-stone-50 hover:text-gold-600 transition shadow-sm flex items-center justify-center gap-2 print:hidden"

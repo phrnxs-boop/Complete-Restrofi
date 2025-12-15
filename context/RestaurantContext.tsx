@@ -150,7 +150,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         .from('tables')
         .select('id')
         .eq('restaurant_id', restaurantId)
-        .eq('table_number', tableNumber)
+        .ilike('table_number', tableNumber)
         .maybeSingle();
 
       if (data) return data.id;
@@ -178,30 +178,42 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
-  // Helper function to parse URL parameters
+  // Helper function to parse URL parameters - STRICT URL ONLY
   const parseURLParams = async (): Promise<{ rid: string | null; tableId: string | null; tableNumber: string | null }> => {
     let rid: string | null = null;
     let tableNumberStr: string | null = null;
+    let urlTableId: string | null = null;
 
     // Parse URL search params
     const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get('rid')) rid = searchParams.get('rid');
-    if (searchParams.get('table')) tableNumberStr = searchParams.get('table');
+    if (searchParams.get('restaurantId')) rid = searchParams.get('restaurantId'); // Support standard param
+    if (searchParams.get('rid')) rid = searchParams.get('rid'); // Support legacy shorthand
 
-    // Hash Check (for some routers)
+    if (searchParams.get('tableNo')) tableNumberStr = searchParams.get('tableNo');
+    if (searchParams.get('table')) tableNumberStr = searchParams.get('table'); // Legacy
+
+    if (searchParams.get('tableId')) urlTableId = searchParams.get('tableId');
+
+    // Hash Check (for specific routers if needed in future, keeping legacy for safety)
     if (window.location.hash.includes('?')) {
-      const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
-      if (hashParams.get('rid')) rid = hashParams.get('rid');
-      if (hashParams.get('table')) tableNumberStr = hashParams.get('table');
+      try {
+        const hashStr = decodeURIComponent(window.location.hash);
+        const hashQuery = hashStr.split('?')[1];
+        if (hashQuery) {
+          const hashParams = new URLSearchParams(hashQuery);
+          if (hashParams.get('rid')) rid = hashParams.get('rid');
+          if (hashParams.get('restaurantId')) rid = hashParams.get('restaurantId');
+          if (hashParams.get('table')) tableNumberStr = hashParams.get('table');
+          if (hashParams.get('tableNo')) tableNumberStr = hashParams.get('tableNo');
+          if (hashParams.get('tableId')) urlTableId = hashParams.get('tableId');
+        }
+      } catch (e) {
+        console.warn("Error parsing hash params:", e);
+      }
     }
 
-    // Resolve table_id if we have restaurant and table number
-    let resolvedTableId = null;
-    if (rid && tableNumberStr) {
-      resolvedTableId = await resolveTableId(rid, tableNumberStr);
-    }
-
-    return { rid, tableId: resolvedTableId, tableNumber: tableNumberStr };
+    // WE NO LONGER RESOLVE OR GUESS. PURE URL TRUTH.
+    return { rid, tableId: urlTableId, tableNumber: tableNumberStr };
   };
 
 
@@ -214,19 +226,33 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       try {
         const { rid, tableId, tableNumber } = await parseURLParams();
 
-        if (rid && tableId) {
-          // QR scan flow: immediately load customer menu
+        if (rid && tableId && tableNumber) {
+          // STRICT QR SCAN MODE
+          // We trust the URL completely.
           await switchRestaurant(rid);
           setTableId(tableId);
-          setTableNumber(tableNumber); // Store the table number for display
+          setTableNumber(tableNumber);
           setIsAdmin(false);
-          setViewMode('APP');
+          setViewMode('APP'); // Customer View
         } else if (rid) {
-          // Restaurant ID present but no table: load restaurant but stay in landing/admin mode
+          // Restaurant ID is present, BUT specific Table details are missing.
+          // This is now invalid for a customer scan. We block it.
+          // Unless we are explicitly checking for admin/landing? 
+          // For now, per instructions: "If tableId is missing, block the menu".
+          // However, we must allow Admin Dashboard access if someone just lands on /?rid=... and logs in?
+          // The instruction says: "Hide Login and Signup buttons completely on all customer menu routes."
+          // But if they are just at /?rid=... are they a customer?
+          // "On the menu page... read tableId... If tableId is missing, block the menu".
+
           await switchRestaurant(rid);
+          // We set specific error to block UI component if we are in consumer mode logic
+          setError("Please rescan QR code (Missing Table Information)");
+
+          // CRITICAL: Do NOT go to LANDING, because LaunchLanding might redirect admins to Dashboard.
+          // Stay in APP mode, but the 'error' above will block the UI rendering in strict render logic.
           setViewMode('APP');
         } else {
-          // No ID in URL means we are on the Landing page
+          // No ID in URL means we are on the global Landing page
           setViewMode('LANDING');
         }
       } catch (err: any) {
@@ -277,68 +303,18 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       };
       setProfile(loadedProfile);
 
+      // Strict URL Check for QR Code Isolation
+      const isQRUrl = window.location.search.includes('rid=') || window.location.search.includes('restaurantId=') ||
+        window.location.hash.includes('rid=') || window.location.hash.includes('restaurantId=');
 
-      // Strict check: Only be an admin if you actually have a restaurant linked
-      // CRITICAL: Don't override if user is accessing via QR code (check URL directly)
-      const { tableId: urlTableId } = await parseURLParams();
-
-      if ((loadedProfile.role === 'admin' || loadedProfile.role === 'staff') && loadedProfile.current_restaurant_id) {
-        // Only set admin mode if NOT accessing via table QR code
-        if (!urlTableId && !tableId) {
-          setIsAdmin(true);
-          await switchRestaurant(loadedProfile.current_restaurant_id);
-        }
-        // If tableId exists, user is viewing menu as customer despite being admin
-      } else if (loadedProfile.role === 'admin' && !loadedProfile.current_restaurant_id) {
-        // SELF-HEALING: Try to find restaurant by email if link is broken
-        const { data: foundRestaurant } = await supabase
-          .from('restaurants')
-          .select('id')
-          .eq('email', 'TODO: Retrieve email from auth is complex here')
-          // WAIT: original code used data.email from profile?
-          // Profile table doesn't seem to have email in the schema (step 95).
-          // Checking step 95 output: profiles table has: first_name, last_name, phone, role, current_restaurant_id. NO EMAIL.
-          // In the original code (step 6 replace_file_content), it had `data.email` usage:
-          // .eq('email', data.email) // Assuming user email matches restaurant email
-          // Wait, where did data.email come from?
-          // In step 6 view_file:
-          // const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).single();
-          // if (data) ...
-          // ... .eq('email', data.email)
-          // If the profile table doesn't have email, then `data.email` was undefined!
-          // And that logic was probably broken unless `select('*')` joined something or I missed a column.
-          // Looking at step 51 (setup.sql), profiles table definitely does NOT have email.
-          // So that self-healing logic was likely broken or I am misinterpreting it.
-          // However, `user` object has email.
-          // I will use `user?.email` instead foundRestaurant lookup.
-          .single();
-
-        // Actually, let's look at the Original Code again in Step 6.
-        // Line 248: .eq('email', data.email)
-        // And data came from 'profiles' table.
-        // So yeah, that was likely a bug in the code I inherited or I added.
-        // Just to be safe, I'll use `user?.email` if available.
-
-        // RE-EVALUATION: I should stick to what works or fix it.
-        // I will use user?.email which is safer.
-        if (user?.email && !urlTableId && !tableId) {
-          const { data: foundRestaurant } = await supabase
-            .from('restaurants')
-            .select('id')
-            .eq('email', user.email)
-            .single();
-
-          if (foundRestaurant) {
-            await profileApi.setCurrentRestaurant(uid, foundRestaurant.id);
-            setIsAdmin(true);
-            await switchRestaurant(foundRestaurant.id);
-          } else {
-            setIsAdmin(false);
-          }
-        } else {
-          setIsAdmin(false);
+      // Admin Logic: Only if NOT in QR mode and User is Admin/Staff with Restaurant
+      if (!isQRUrl && (loadedProfile.role === 'admin' || loadedProfile.role === 'staff') && loadedProfile.current_restaurant_id) {
+        setIsAdmin(true);
+        if (!currentRestaurant || currentRestaurant.id !== loadedProfile.current_restaurant_id) {
+          switchRestaurant(loadedProfile.current_restaurant_id);
         }
       } else {
+        // Force Customer View if scanning QR, even if user is admin
         setIsAdmin(false);
       }
     } else if (error) {
@@ -654,13 +630,14 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const placeOrder = async () => {
-    if (cart.length === 0 || !currentRestaurant || !tableNumber) return;
+    // Use tableId from state (Strict URL Mode)
+    if (cart.length === 0 || !currentRestaurant || !tableId) return;
 
     setIsPlacingOrder(true);
     try {
-      // Resolve table number to table_id (UUID)
-      const resolvedTableId = await resolveTableId(currentRestaurant.id, tableNumber);
-      if (!resolvedTableId) throw new Error('Table not found');
+      // Use strict tableId from URL/State
+      const resolvedTableId = tableId;
+      if (!resolvedTableId) throw new Error('Table ID missing');
 
       // Calculate total with tax (matching CartDrawer logic)
       const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -704,7 +681,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
     } catch (error) {
       console.error('Order placement failed:', error);
-      alert('Failed to place order');
+      alert('Failed to place order: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsPlacingOrder(false);
     }

@@ -12,7 +12,7 @@ import { AuthModal } from './components/AuthModal';
 import { Icons } from './components/ui/Icons';
 
 const AppContent: React.FC = () => {
-    const { viewMode, tableId, isAdmin, setIsLoginModalOpen, isLoginModalOpen, user, openAuthModal } = useRestaurant();
+    const { viewMode, tableId, tableNumber, isAdmin, setIsLoginModalOpen, isLoginModalOpen, user, openAuthModal } = useRestaurant();
 
     return (
         <div className="font-sans antialiased text-stone-900 bg-stone-50 min-h-screen">
@@ -30,7 +30,7 @@ const AppContent: React.FC = () => {
                     {isAdmin ? <AdminDashboard /> : <CustomerApp />}
 
                     {/* Toggle Switcher Logic - Only show button if NOT at a specific table (i.e. URL generic access) */}
-                    {!tableId && !isAdmin && (
+                    {!tableNumber && !isAdmin && (
                         <div className="fixed bottom-4 left-4 z-50">
                             <button
                                 onClick={() => openAuthModal('LOGIN')}
